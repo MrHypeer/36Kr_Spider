@@ -60,6 +60,23 @@ class Crawler:
             p = csv.writer(f)
             p.writerow(data)
 
+    def clean_text(self,text):
+        # NOTE: 完全清除所有的符号，只保留中文
+        # comp = re.compile('[^A-Z^a-z^0-9^\u4e00-\u9fa5]')
+        # return comp.sub('', text)
+        # NOTE: 将中文特殊符号使用‘，’进行替换
+        return re.sub(u"([^\u4e00-\u9fa5\u0030-\u0039\u0041-\u005a\u0061-\u007a])",",",text)
+
+    def write_txt(self,data):
+
+        fw = open('d:\\Data\Webspider\\news\\' + self.clean_text(data[0]) + '.txt','a+',encoding='utf-8')
+        # NOTE:上述代码需要在制定位置建立相应的文件夹
+        # filename = str(data[0])+ '.txt' # NOTE: r'D:\Data\Webspider\news'+'\\' +
+        # fw = open(filename,'a+',encoding='utf-8')
+        for element in data:
+            fw.write(str(element))
+            fw.write('\r\n')
+
     def getessay(self,url):
         contentlist = list()
         paragraph = list()
@@ -71,13 +88,13 @@ class Crawler:
         print('Title:',title)
         print('Summary:',summary)
         print('-'*20)
-        for each in content:
-            paragraph.append(each.get_text())
         contentlist.append(title)
         contentlist.append(absurl)
         contentlist.append(summary)
-        contentlist.append(paragraph)
-        self.write_csv(contentlist)
+        for each in content:
+            contentlist.append(each.get_text())
+        # self.write_csv(contentlist)
+        self.write_txt(contentlist)
 
 
     def parse(self,url):
