@@ -55,6 +55,13 @@ class Crawler:
             for i in range(3):
                 browser.execute_script("window.scrollTo(0, document.body.scrollHeight);") # execute_script是插入js代码的
                 time.sleep(2) #加载需要时间，2秒比较合理
+            for j in range(10):
+                try:
+                    button = browser.execute_script("var div = document.getElementsByClassName('kr-loading-more-button show'); div[0].click();")
+                    time.sleep(2)
+                except:
+                    print('could not click more!')
+                    sys.exit()
             bs = BeautifulSoup(browser.page_source,'html.parser')
             if bs is not None:
                 for link in bs.find_all('a',href=re.compile('^(/p/)')):
