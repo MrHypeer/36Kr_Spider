@@ -3,12 +3,10 @@ from urllib.error import HTTPError
 from urllib.error import URLError
 from bs4 import BeautifulSoup
 import re
-from random import choice
-#处理远程主机强迫关闭了一个现有的连接
 import time
 import socket
-import csv
 import sys
+from selenium import webdriver
 
 class Website:
     """describing the webpage"""
@@ -37,10 +35,34 @@ class Crawler:
     def __init__(self, site):
         self.site = site
 
-    def getPage(self,url): # NOTE: 返回BeautifulSoup对象
+    def parse(self,url):
+        html = urlopen(url)
+        bs = BeautifulSoup(html,'html.parser')
+        if bs is not None:
+            return bs
+        else:
+            print("bs = None!")
+            return None
+
+    def getPage(self,url): # NOTE: 返回BeautifulSoup对象 link:"https://36kr.com/information/technology"
+        linkset = set()
         try:
-            html = urlopen(url)
-            html.encoding = 'UTF-8'
+            option = webdriver.ChromeOptions()
+            option.add_argument('headless')
+            drivepath = r'D:\Software\Python 3.6.8\Lib\site-packages\selenium\chromedriver.exe'
+            browser = webdriver.Chrome(executable_path=drivepath,chrome_options = option)
+            browser.get(url)
+            for i in range(3):
+                browser.execute_script("window.scrollTo(0, document.body.scrollHeight);") # execute_script是插入js代码的
+                time.sleep(2) #加载需要时间，2秒比较合理
+            bs = BeautifulSoup(browser.page_source,'html.parser')
+            if bs is not None:
+                for link in bs.find_all('a',href=re.compile('^(/p/)')):
+                    if 'href' in link.attrs:
+                        url = link.attrs['href']
+                        if url != '' and url not in linkset:
+                            linkset.add(url)
+                    time.sleep(0.3)
         except HTTPError as e:
             print('Error：网页在服务器上不存在')
             return None
@@ -50,7 +72,7 @@ class Crawler:
         except AttributeError as e:
             print('AttributeErrorError')
             return None
-        return BeautifulSoup(html.read(), 'html.parser')
+        return linkset
 
     def write_csv(self,data):
         path = '36Kr_news.csv'
@@ -79,9 +101,8 @@ class Crawler:
 
     def getessay(self,url):
         contentlist = list()
-        paragraph = list()
         absurl = 'https://36kr.com'+url
-        bs = self.getPage(absurl)
+        bs = self.parse(absurl)
         title = bs.find('h1').get_text()
         summary = bs.find('div',{'class':'summary'}).get_text()
         content = bs.find('div',{'class':'common-width content articleDetailContent kr-rich-text-wrapper'}).find_all('p')
@@ -97,27 +118,16 @@ class Crawler:
         self.write_txt(contentlist)
 
 
-    def parse(self,url):
-        linkset = set()
-        bs = self.getPage(url)
-        if bs is not None:
-            for link in bs.find_all('a',href=re.compile('^(/p/)')):
-                if 'href' in link.attrs:
-                    url = link.attrs['href']
-                    title = link.get_text()
-                    if url != '' and title != '' and url not in linkset:
-                        linkset.add(url)
-                        content = Content(url,title)
-                        # content.print()
-                        self.getessay(url)
-                        print('-'*30)
-                time.sleep(0.3)
-
-
-socket.setdefaulttimeout(10)
-target = 'https://36kr.com/information/web_news'
+socket.setdefaulttimeout(25)
+target = 'https://36kr.com/information/technology'
+num = 0
 try:
     crawler = Crawler(target)
-    crawler.parse(target)
+    linkset = crawler.getPage(target)
+    for relalink in linkset:
+        num = num + 1
+        print(num)
+        crawler.getessay(relalink)
+    print('Job finished, total '+str(num)+' essays obtained!')
 except socket.timeout:
         print('获取连接超时！')
